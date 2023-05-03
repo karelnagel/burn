@@ -242,4 +242,77 @@ pub trait TensorOps<B: Backend> {
         dim: usize,
     ) -> B::TensorPrimitive<D>;
     fn relu<const D: usize>(tensor: B::TensorPrimitive<D>) -> B::TensorPrimitive<D>;
+    fn unbind<const D: usize, const D2: usize>(
+        tensor: B::TensorPrimitive<D>,
+        dim: usize,
+    ) -> Vec<B::TensorPrimitive<D2>>;
+    fn cumsum<const D: usize>(tensor: B::TensorPrimitive<D>, dim: usize) -> B::TensorPrimitive<D>;
+    fn stack<const D: usize, const D2: usize>(
+        tensors: Vec<B::TensorPrimitive<D>>,
+        dim: usize,
+    ) -> B::TensorPrimitive<D2>;
+    fn narrow<const D: usize>(
+        tensor: B::TensorPrimitive<D>,
+        dim: usize,
+        start: usize,
+        length: usize,
+    ) -> B::TensorPrimitive<D>;
+    fn upsample_linear1d<const D: usize, const D2: usize>(
+        tensor: B::TensorPrimitive<D>,
+        output_size: &[usize],
+        align_corners: bool,
+        scales: impl Into<Option<f64>>,
+    ) -> B::TensorPrimitive<D2>;
+    fn pad<const D: usize>(
+        tensor: B::TensorPrimitive<D>,
+        pad: &[usize],
+        mode: &str,
+        value: impl Into<Option<f64>>,
+    ) -> B::TensorPrimitive<D>;
+    fn expand<const D: usize>(
+        tensor: B::TensorPrimitive<D>,
+        size: Vec<usize>,
+        implicit: bool,
+    ) -> B::TensorPrimitive<D>;
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: B::TensorPrimitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> B::TensorPrimitive<D2>;
+    fn select<const D: usize, const D2: usize>(
+        tensor: B::TensorPrimitive<D>,
+        dim: i64,
+        index: i64,
+    ) -> B::TensorPrimitive<D2>;
+    fn flip<const D: usize>(
+        tensor: B::TensorPrimitive<D>,
+        dims: Vec<usize>,
+    ) -> B::TensorPrimitive<D>;
+    fn permute<const D: usize>(
+        tensor: B::TensorPrimitive<D>,
+        dims: [usize; D],
+    ) -> B::TensorPrimitive<D>;
+    fn einsum<const D: usize, const D2: usize, const D3: usize>(
+        equation: &str,
+        tensor1: B::TensorPrimitive<D>,
+        tensor2: B::TensorPrimitive<D2>,
+    ) -> B::TensorPrimitive<D3>;
+    fn index_tch<const D: usize, const D2: usize>(
+        tensor: B::TensorPrimitive<D>,
+        indices: Vec<B::IntTensorPrimitive<D>>,
+    ) -> B::TensorPrimitive<D2>;
+    fn repeat_interleave_self_int<const D: usize, const D2: usize>(
+        tensor: B::TensorPrimitive<D>,
+        repeats: usize,
+        dim: Option<usize>,
+        output_size: Option<usize>,
+    ) -> B::TensorPrimitive<D2>;
+    fn where_self<const D: usize>(
+        tensor: B::TensorPrimitive<D>,
+        condition: B::BoolTensorPrimitive<D>,
+        other: B::TensorPrimitive<D>,
+    ) -> B::TensorPrimitive<D>;
+    fn copy_<const D:usize>(tensor: &mut B::TensorPrimitive<D>, src: B::TensorPrimitive<D>);
 }

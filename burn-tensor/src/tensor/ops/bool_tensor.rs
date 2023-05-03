@@ -77,4 +77,24 @@ pub trait BoolTensorOps<B: Backend> {
         lhs: B::BoolTensorPrimitive<D>,
         rhs: bool,
     ) -> B::BoolTensorPrimitive<D>;
+    fn bool_permute<const D: usize>(
+        tensor: B::BoolTensorPrimitive<D>,
+        dims: [usize; D],
+    ) -> B::BoolTensorPrimitive<D>;
+    fn bool_flip<const D: usize>(
+        tensor: B::BoolTensorPrimitive<D>,
+        dims: Vec<usize>,
+    ) -> B::BoolTensorPrimitive<D>;
+    fn bool_upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: B::BoolTensorPrimitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> B::BoolTensorPrimitive<D2>;
+    fn bool_select<const D: usize, const D2: usize>(
+        tensor: B::BoolTensorPrimitive<D>,
+        dim: i64,
+        index: i64,
+    ) -> B::BoolTensorPrimitive<D2>;
 }

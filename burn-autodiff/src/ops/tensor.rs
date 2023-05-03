@@ -87,15 +87,31 @@ impl<B: Backend> TensorOps<ADBackendDecorator<B>> for ADBackendDecorator<B> {
         struct Add;
 
         impl<B: Backend, const D: usize> Backward<B, D, 2> for Add {
-            type State = ();
+            type State = (Shape<D>, Shape<D>);
 
             fn backward(self, ops: Ops<Self::State, 2>, grads: &mut Gradients) {
-                binary::<B, D, D, D, _, _>(ops.parents, ops.node, grads, |grad| grad, |grad| grad);
+                let (shape_lhs, shape_rhs) = ops.state;
+
+                binary::<B, D, D, D, _, _>(
+                    ops.parents,
+                    ops.node,
+                    grads,
+                    |grad| broadcast_shape::<B, D>(grad, shape_lhs),
+                    |grad| broadcast_shape::<B, D>(grad, shape_rhs),
+                );
             }
         }
 
-        Add.prepare([lhs.node, rhs.node], [lhs.graph, rhs.graph])
-            .stateless(B::add(lhs.primitive, rhs.primitive))
+        match Add
+            .prepare([lhs.node, rhs.node], [lhs.graph, rhs.graph])
+            .statefull()
+        {
+            OpsKind::Tracked(preps) => preps.finish(
+                (B::shape(&lhs.primitive), B::shape(&rhs.primitive)),
+                B::add(lhs.primitive, rhs.primitive),
+            ),
+            OpsKind::UnTracked(preps) => preps.finish(B::add(lhs.primitive, rhs.primitive)),
+        }
     }
 
     fn add_scalar<const D: usize>(lhs: ADTensor<B, D>, rhs: FloatElem<B>) -> ADTensor<B, D> {
@@ -120,21 +136,31 @@ impl<B: Backend> TensorOps<ADBackendDecorator<B>> for ADBackendDecorator<B> {
         struct Sub;
 
         impl<B: Backend, const D: usize> Backward<B, D, 2> for Sub {
-            type State = ();
+            type State = (Shape<D>, Shape<D>);
 
             fn backward(self, ops: Ops<Self::State, 2>, grads: &mut Gradients) {
+                let (shape_lhs, shape_rhs) = ops.state;
+
                 binary::<B, D, D, D, _, _>(
                     ops.parents,
                     ops.node,
                     grads,
-                    |grad| grad,
-                    |grad| B::neg(grad),
+                    |grad| broadcast_shape::<B, D>(grad, shape_lhs),
+                    |grad| broadcast_shape::<B, D>(B::neg(grad), shape_rhs),
                 );
             }
         }
 
-        Sub.prepare([lhs.node, rhs.node], [lhs.graph, rhs.graph])
-            .stateless(B::sub(lhs.primitive, rhs.primitive))
+        match Sub
+            .prepare([lhs.node, rhs.node], [lhs.graph, rhs.graph])
+            .statefull()
+        {
+            OpsKind::Tracked(preps) => preps.finish(
+                (B::shape(&lhs.primitive), B::shape(&rhs.primitive)),
+                B::sub(lhs.primitive, rhs.primitive),
+            ),
+            OpsKind::UnTracked(preps) => preps.finish(B::sub(lhs.primitive, rhs.primitive)),
+        }
     }
 
     fn sub_scalar<const D: usize>(lhs: ADTensor<B, D>, rhs: FloatElem<B>) -> ADTensor<B, D> {
@@ -1301,4 +1327,131 @@ impl<B: Backend> TensorOps<ADBackendDecorator<B>> for ADBackendDecorator<B> {
             OpsKind::UnTracked(prep) => prep.finish(output),
         }
     }
+    fn unbind<const D: usize, const D2: usize>(
+        tensor: ADTensor<B, D>,
+        dim: usize,
+    ) -> Vec<ADTensor<B, D2>> {
+        unimplemented!()
+    }
+    fn cumsum<const D: usize>(tensor: ADTensor<B, D>, dim: usize) -> ADTensor<B, D> {
+        unimplemented!()
+    }
+    fn stack<const D: usize, const D2: usize>(
+        tensors: Vec<ADTensor<B, D>>,
+        dim: usize,
+    ) -> ADTensor<B, D2> {
+        unimplemented!()
+    }
+    fn narrow<const D: usize>(
+        tensor: ADTensor<B, D>,
+        dim: usize,
+        start: usize,
+        length: usize,
+    ) -> ADTensor<B, D> {
+        unimplemented!()
+    }
+    fn upsample_linear1d<const D: usize, const D2: usize>(
+        tensor: ADTensor<B, D>,
+        output_size: &[usize],
+        align_corners: bool,
+        scales: impl Into<Option<f64>>,
+    ) -> ADTensor<B, D2> {
+        unimplemented!()
+    }
+    fn pad<const D: usize>(
+        tensor: ADTensor<B, D>,
+        pad: &[usize],
+        mode: &str,
+        value: impl Into<Option<f64>>,
+    ) -> ADTensor<B, D> {
+        unimplemented!()
+    }
+    fn expand<const D: usize>(
+        tensor: ADTensor<B, D>,
+        size: Vec<usize>,
+        implicit: bool,
+    ) -> ADTensor<B, D> {
+        unimplemented!()
+    }
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: ADTensor<B, D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> ADTensor<B, D2> {
+        unimplemented!()
+    }
+    fn select<const D: usize, const D2: usize>(
+        tensor: ADTensor<B, D>,
+        dim: i64,
+        index: i64,
+    ) -> ADTensor<B, D2> {
+        unimplemented!()
+    }
+    fn flip<const D: usize>(tensor: ADTensor<B, D>, dims: Vec<usize>) -> ADTensor<B, D> {
+        unimplemented!()
+    }
+    fn permute<const D: usize>(
+        tensor: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>,
+        dims: [usize; D],
+    ) -> <ADBackendDecorator<B> as Backend>::TensorPrimitive<D> {
+        unimplemented!()
+    }
+    fn einsum<const D: usize, const D2: usize, const D3: usize>(
+        equation: &str,
+        tensor1: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>,
+        tensor2: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D2>,
+    ) -> <ADBackendDecorator<B> as Backend>::TensorPrimitive<D3> {
+        unimplemented!()
+    }
+    fn index_tch<const D: usize, const D2: usize>(
+        tensor: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>,
+        indices: Vec<<ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D>>,
+    ) -> <ADBackendDecorator<B> as Backend>::TensorPrimitive<D2> {
+        unimplemented!()
+    }
+    fn repeat_interleave_self_int<const D: usize, const D2: usize>(
+        tensor: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>,
+        repeats: usize,
+        dim: Option<usize>,
+        output_size: Option<usize>,
+    ) -> <ADBackendDecorator<B> as Backend>::TensorPrimitive<D2> {
+        unimplemented!()
+    }
+    fn where_self<const D: usize>(
+            tensor: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>,
+            condition: <ADBackendDecorator<B> as Backend>::BoolTensorPrimitive<D>,
+            other: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>,
+        ) -> <ADBackendDecorator<B> as Backend>::TensorPrimitive<D> {
+        unimplemented!()
+    }
+    fn copy_<const D:usize>(tensor: &mut <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>, src: <ADBackendDecorator<B> as Backend>::TensorPrimitive<D>) {
+        unimplemented!()
+    }
+}
+
+/// Make sure the grad tensor has the given shape.
+///
+/// If broadcasting happened during the forward pass, the gradients will be sum along the
+/// broadcasted dimension.
+fn broadcast_shape<B: Backend, const D: usize>(
+    mut grad: B::TensorPrimitive<D>,
+    shape: Shape<D>,
+) -> B::TensorPrimitive<D> {
+    let shape_grad = B::shape(&grad);
+
+    for i in 0..D {
+        if shape_grad.dims[i] != shape.dims[i] {
+            if shape.dims[i] != 1 {
+                panic!(
+                    "Invalid broadcast shapes: Next grad shape {:?}, Previous grad shape {:?}. {}",
+                    shape.dims, shape_grad.dims, "Expected the shape of the next grad to be 1."
+                );
+            }
+            grad = B::sum_dim(grad, i);
+        }
+    }
+
+    grad
 }

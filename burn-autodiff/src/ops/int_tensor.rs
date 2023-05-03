@@ -242,4 +242,32 @@ impl<B: Backend> IntTensorOps<ADBackendDecorator<B>> for ADBackendDecorator<B> {
     ) -> <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D> {
         B::int_mask_fill(tensor, mask, value)
     }
+    fn int_permute<const D: usize>(
+        tensor: <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D>,
+        dims: [usize; D],
+    ) -> <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D> {
+        unimplemented!()
+    }
+    fn int_flip<const D: usize>(
+        tensor: <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D>,
+        dims: Vec<usize>,
+    ) -> <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D> {
+        unimplemented!()
+    }
+    fn int_upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D2> {
+        unimplemented!()
+    }
+    fn int_select<const D: usize, const D2: usize>(
+        tensor: <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D>,
+        dim: i64,
+        index: i64,
+    ) -> <ADBackendDecorator<B> as Backend>::IntTensorPrimitive<D2> {
+        unimplemented!()
+    }
 }

@@ -2,13 +2,13 @@ use alloc::vec::Vec;
 use core::convert::TryInto;
 
 use crate::backend::ADBackend;
-use crate::check;
 use crate::check::TensorCheck;
 use crate::tensor::backend::Backend;
 use crate::tensor::stats;
 use crate::tensor::{Data, Distribution, Shape};
 use crate::Int;
 use crate::Tensor;
+use crate::{check, Bool};
 
 impl<const D: usize, B> Tensor<B, D>
 where
@@ -296,6 +296,71 @@ where
     /// Applies the relu function to the tensor.
     pub(crate) fn relu(self) -> Self {
         Self::new(B::relu(self.primitive))
+    }
+    pub fn unbind<const D2: usize>(&self, dim: usize) -> Vec<Tensor<B, D2>> {
+        B::unbind(self.primitive.clone(), dim)
+            .iter()
+            .map(|t| Tensor::new(t.clone()))
+            .collect()
+    }
+    pub fn cumsum(&self, dim: usize) -> Tensor<B, D> {
+        Self::new(B::cumsum(self.primitive.clone(), dim))
+    }
+    pub fn stack<const D2: usize>(tensors: Vec<Self>, dim: usize) -> Tensor<B, D2> {
+        Tensor::new(B::stack(
+            tensors.iter().map(|t| t.primitive.clone()).collect(),
+            dim,
+        ))
+    }
+    pub fn narrow(&self, dim: usize, start: usize, length: usize) -> Self {
+        Self::new(B::narrow(self.primitive.clone(), dim, start, length))
+    }
+    pub fn upsample_linear1d<const D2: usize>(
+        &self,
+        output_size: &[usize],
+        align_corners: bool,
+        scales: impl Into<Option<f64>>,
+    ) -> Tensor<B, D2> {
+        Tensor::new(B::upsample_linear1d(
+            self.primitive.clone(),
+            output_size,
+            align_corners,
+            scales,
+        ))
+    }
+    pub fn pad(&self, pad: &[usize], mode: &str, value: impl Into<Option<f64>>) -> Self {
+        Self::new(B::pad(self.primitive.clone(), pad, mode, value))
+    }
+    pub fn expand(&self, size: Vec<usize>, implicit: bool) -> Self {
+        Self::new(B::expand(self.primitive.clone(), size, implicit))
+    }
+    pub fn einsum<const D2: usize, const D3: usize>(
+        equation: &str,
+        tensor1: Tensor<B, D>,
+        tensor2: Tensor<B, D2>,
+    ) -> Tensor<B, D3> {
+        Tensor::new(B::einsum(equation, tensor1.primitive, tensor2.primitive))
+    }
+    pub fn index_tch<const D2: usize>(&self, indices: Vec<Tensor<B, D, Int>>) -> Tensor<B, D2> {
+        let indices = indices.iter().map(|t| t.primitive.clone()).collect();
+        Tensor::new(B::index_tch(self.primitive.clone(), indices))
+    }
+    pub fn repeat_interleave_self_int<const D2: usize>(
+        &self,
+        repeats: usize,
+        dim: Option<usize>,
+        output_size: Option<usize>,
+    ) -> Tensor<B, D2> {
+        let tensor =
+            B::repeat_interleave_self_int(self.primitive.clone(), repeats, dim, output_size);
+        Tensor::new(tensor)
+    }
+    pub fn where_self(self, condition: Tensor<B, D, Bool>, other: Tensor<B, D>) -> Tensor<B, D> {
+        let tensor = B::where_self(self.primitive, condition.primitive, other.primitive);
+        Tensor::new(tensor)
+    }
+    pub fn copy_(&mut self, src: Tensor<B, D>) {
+        B::copy_(&mut self.primitive, src.primitive);
     }
 }
 

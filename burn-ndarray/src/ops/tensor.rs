@@ -2,6 +2,7 @@
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::ops::Range;
+use ndarray::{Array, Axis};
 
 // Current crate
 use super::{matmul::matmul, NdArrayMathOps, NdArrayOps};
@@ -429,6 +430,146 @@ impl<E: FloatNdArrayElement> TensorOps<NdArrayBackend<E>> for NdArrayBackend<E> 
             .into_shared();
 
         NdArrayTensor::new(array)
+    }
+    fn unbind<const D: usize, const D2: usize>(
+        tensor: NdArrayTensor<E, D>,
+        dim: usize,
+    ) -> Vec<NdArrayTensor<E, D2>> {
+        let array: Vec<_> = tensor
+            .array
+            .axis_chunks_iter(Axis(dim), 1)
+            .map(|a| NdArrayTensor::new(a.to_owned().into()))
+            .collect();
+        array
+    }
+    fn cumsum<const D: usize>(tensor: NdArrayTensor<E, D>, dim: usize) -> NdArrayTensor<E, D> {
+        let mut array = tensor.array.to_owned();
+        array.accumulate_axis_inplace(Axis(dim), |x, sum| *sum += *x);
+        tensor
+    }
+    fn stack<const D: usize, const D2: usize>(
+        tensors: Vec<NdArrayTensor<E, D>>,
+        dim: usize,
+    ) -> NdArrayTensor<E, D2> {
+        let arrays: Vec<_> = tensors.iter().map(|t| t.array.view()).collect();
+        NdArrayTensor::new(ndarray::stack(Axis(dim), &arrays).unwrap().into())
+    }
+    fn narrow<const D: usize>(
+        tensor: NdArrayTensor<E, D>,
+        dim: usize,
+        start: usize,
+        length: usize,
+    ) -> NdArrayTensor<E, D> {
+        unimplemented!()
+    }
+    fn upsample_linear1d<const D: usize, const D2: usize>(
+        tensor: NdArrayTensor<E, D>,
+        output_size: &[usize],
+        align_corners: bool,
+        scales: impl Into<Option<f64>>,
+    ) -> NdArrayTensor<E, D2> {
+        let tensor = tensor.array;
+        let input_size = tensor.len();
+        let scale = scales
+            .into()
+            .unwrap_or(output_size[0] as f64 / input_size as f64);
+        let mut output = Array::zeros(output_size);
+
+        for i in 0..output_size[0] {
+            let x = if align_corners {
+                i as f64 * (input_size - 1) as f64 / (output_size[0] - 1) as f64
+            } else {
+                i as f64 / scale
+            };
+
+            let idx = x.floor() as usize;
+            let w = x.fract();
+
+            if idx >= input_size - 1 {
+                output[i] = tensor[input_size - 1];
+            } else {
+                output[i] = E::from_elem(
+                    tensor[idx].elem::<f64>() * (1.0 - w) + tensor[idx + 1].elem::<f64>() * w,
+                )
+            }
+        }
+
+        NdArrayTensor::new(output.into_shared())
+    }
+    fn pad<const D: usize>(
+        tensor: NdArrayTensor<E, D>,
+        pad: &[usize],
+        mode: &str,
+        value: impl Into<Option<f64>>,
+    ) -> NdArrayTensor<E, D> {
+        unimplemented!()
+    }
+    fn expand<const D: usize>(
+        tensor: NdArrayTensor<E, D>,
+        size: Vec<usize>,
+        implicit: bool,
+    ) -> NdArrayTensor<E, D> {
+        unimplemented!()
+    }
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: NdArrayTensor<E, D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> NdArrayTensor<E, D2> {
+        unimplemented!()
+    }
+    fn select<const D: usize, const D2: usize>(
+        tensor: NdArrayTensor<E, D>,
+        dim: i64,
+        index: i64,
+    ) -> NdArrayTensor<E, D2> {
+        unimplemented!()
+    }
+    fn flip<const D: usize>(tensor: NdArrayTensor<E, D>, dims: Vec<usize>) -> NdArrayTensor<E, D> {
+        NdArrayTensor::new(tensor.array.reversed_axes())
+    }
+    fn permute<const D: usize>(
+        tensor: <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+        dims: [usize; D],
+    ) -> <NdArrayBackend<E> as Backend>::TensorPrimitive<D> {
+        let array = tensor.array.permuted_axes(dims.to_vec());
+        NdArrayTensor::new(array)
+    }
+    fn einsum<const D: usize, const D2: usize, const D3: usize>(
+        equation: &str,
+        tensor1: <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+        tensor2: <NdArrayBackend<E> as Backend>::TensorPrimitive<D2>,
+    ) -> <NdArrayBackend<E> as Backend>::TensorPrimitive<D3> {
+        unimplemented!()
+    }
+    fn index_tch<const D: usize, const D2: usize>(
+        tensor: <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+        indices: Vec<<NdArrayBackend<E> as Backend>::IntTensorPrimitive<D>>,
+    ) -> <NdArrayBackend<E> as Backend>::TensorPrimitive<D2> {
+        unimplemented!()
+    }
+    fn repeat_interleave_self_int<const D: usize, const D2: usize>(
+        tensor: <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+        repeats: usize,
+        dim: Option<usize>,
+        output_size: Option<usize>,
+    ) -> <NdArrayBackend<E> as Backend>::TensorPrimitive<D2> {
+        unimplemented!()
+    }
+    fn where_self<const D: usize>(
+        tensor: <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+        condition: <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D>,
+        other: <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+    ) -> <NdArrayBackend<E> as Backend>::TensorPrimitive<D> {
+        unimplemented!()
+    }
+    fn copy_<const D: usize>(
+        tensor: &mut <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+        src: <NdArrayBackend<E> as Backend>::TensorPrimitive<D>,
+    ) {
+        unimplemented!()
     }
 }
 

@@ -117,4 +117,33 @@ impl<E: FloatNdArrayElement> BoolTensorOps<NdArrayBackend<E>> for NdArrayBackend
         let array = lhs.array.mapv(|a| a == rhs).into_shared();
         NdArrayTensor { array }
     }
+    fn bool_permute<const D: usize>(
+        tensor: <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D>,
+        dims: [usize; D],
+    ) -> <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D> {
+        let array = tensor.array.permuted_axes(dims.to_vec());
+        NdArrayTensor::new(array)
+    }
+    fn bool_flip<const D: usize>(
+        tensor: <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D>,
+        dims: Vec<usize>,
+    ) -> <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D> {
+        unimplemented!()
+    }
+    fn bool_upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D2> {
+        unimplemented!()
+    }
+    fn bool_select<const D: usize, const D2: usize>(
+            tensor: <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D>,
+            dim: i64,
+            index: i64,
+        ) -> <NdArrayBackend<E> as Backend>::BoolTensorPrimitive<D2> {
+        unimplemented!()
+    }
 }

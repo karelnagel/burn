@@ -275,6 +275,33 @@ where
             dim,
         ))
     }
+    pub fn permute(self, dims: [usize; D]) -> Self {
+        check!(TensorCheck::permute(&self.shape(), dims));
+        Self::new(K::permute(self.primitive, dims))
+    }
+    pub fn flip(&self, dims: Vec<usize>) -> Self {
+        Self::new(K::flip(self.primitive.clone(), dims))
+    }
+    pub fn upsample_bilinear2d<const D2: usize>(
+        &self,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> Tensor<B, D2, K> {
+        let tensor = K::upsample_bilinear2d(
+            self.primitive.clone(),
+            output_size,
+            align_corners,
+            scales_h,
+            scales_w,
+        );
+        Tensor::new(tensor)
+    }
+    pub fn select<const D2: usize>(&self, dim: i64, index: i64) -> Tensor<B, D2, K> {
+        let tensor = K::select(self.primitive.clone(), dim, index);
+        Tensor::new(tensor)
+    }
 }
 
 impl<B, const D: usize, K> Tensor<B, D, K>
@@ -404,6 +431,20 @@ pub trait BasicOps<B: Backend>: TensorKind<B> {
     fn elem_type_name() -> &'static str {
         core::any::type_name::<Self::Elem>()
     }
+    fn permute<const D: usize>(tensor: Self::Primitive<D>, dims: [usize; D]) -> Self::Primitive<D>;
+    fn flip<const D: usize>(tensor: Self::Primitive<D>, dims: Vec<usize>) -> Self::Primitive<D>;
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> Self::Primitive<D2>;
+    fn select<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        dim: i64,
+        index: i64,
+    ) -> Self::Primitive<D2>;
 }
 
 impl<B: Backend> BasicOps<B> for Float {
@@ -481,6 +522,28 @@ impl<B: Backend> BasicOps<B> for Float {
 
     fn equal_elem<const D: usize>(lhs: Self::Primitive<D>, rhs: Self::Elem) -> Tensor<B, D, Bool> {
         Tensor::new(B::equal_elem(lhs, rhs))
+    }
+    fn permute<const D: usize>(tensor: Self::Primitive<D>, dims: [usize; D]) -> Self::Primitive<D> {
+        B::permute(tensor, dims)
+    }
+    fn flip<const D: usize>(tensor: Self::Primitive<D>, dims: Vec<usize>) -> Self::Primitive<D> {
+        B::flip(tensor, dims)
+    }
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> Self::Primitive<D2> {
+        B::upsample_bilinear2d(tensor, output_size, align_corners, scales_h, scales_w)
+    }
+    fn select<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        dim: i64,
+        index: i64,
+    ) -> Self::Primitive<D2> {
+        B::select(tensor, dim, index)
     }
 }
 
@@ -560,6 +623,28 @@ impl<B: Backend> BasicOps<B> for Int {
     fn cat<const D: usize>(vectors: Vec<Self::Primitive<D>>, dim: usize) -> Self::Primitive<D> {
         B::int_cat(vectors, dim)
     }
+    fn permute<const D: usize>(tensor: Self::Primitive<D>, dims: [usize; D]) -> Self::Primitive<D> {
+        B::int_permute(tensor, dims)
+    }
+    fn flip<const D: usize>(tensor: Self::Primitive<D>, dims: Vec<usize>) -> Self::Primitive<D> {
+        B::int_flip(tensor, dims)
+    }
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> Self::Primitive<D2> {
+        B::int_upsample_bilinear2d(tensor, output_size, align_corners, scales_h, scales_w)
+    }
+    fn select<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        dim: i64,
+        index: i64,
+    ) -> Self::Primitive<D2> {
+        B::int_select(tensor, dim, index)
+    }
 }
 
 impl<B: Backend> BasicOps<B> for Bool {
@@ -637,5 +722,27 @@ impl<B: Backend> BasicOps<B> for Bool {
 
     fn cat<const D: usize>(vectors: Vec<Self::Primitive<D>>, dim: usize) -> Self::Primitive<D> {
         B::bool_cat(vectors, dim)
+    }
+    fn permute<const D: usize>(tensor: Self::Primitive<D>, dims: [usize; D]) -> Self::Primitive<D> {
+        B::bool_permute(tensor, dims)
+    }
+    fn flip<const D: usize>(tensor: Self::Primitive<D>, dims: Vec<usize>) -> Self::Primitive<D> {
+        B::bool_flip(tensor, dims)
+    }
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> Self::Primitive<D2> {
+        B::bool_upsample_bilinear2d(tensor, output_size, align_corners, scales_h, scales_w)
+    }
+    fn select<const D: usize, const D2: usize>(
+        tensor: Self::Primitive<D>,
+        dim: i64,
+        index: i64,
+    ) -> Self::Primitive<D2> {
+        B::bool_select(tensor, dim, index)
     }
 }

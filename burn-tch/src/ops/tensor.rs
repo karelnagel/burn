@@ -384,4 +384,162 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
     fn relu<const D: usize>(tensor: TchTensor<E, D>) -> TchTensor<E, D> {
         tensor.unary_ops(|mut tensor| tensor.relu_(), |tensor| tensor.relu())
     }
+    fn unbind<const D: usize, const D2: usize>(
+        tensor: TchTensor<E, D>,
+        dim: usize,
+    ) -> Vec<TchTensor<E, D2>> {
+        TchOps::unbind(tensor, dim)
+    }
+    fn cumsum<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<E, D> {
+        tensor.unary_ops(
+            |mut tensor| tensor.cumsum_(dim as i64, E::KIND),
+            |tensor| tensor.cumsum(dim as i64, E::KIND),
+        )
+    }
+    fn stack<const D: usize, const D2: usize>(
+        tensors: Vec<TchTensor<E, D>>,
+        dim: usize,
+    ) -> TchTensor<E, D2> {
+        TchOps::stack(tensors, dim)
+    }
+    fn narrow<const D: usize>(
+        tensor: TchTensor<E, D>,
+        dim: usize,
+        start: usize,
+        length: usize,
+    ) -> TchTensor<E, D> {
+        tensor.unary_ops(
+            |tensor| tensor.narrow(dim as i64, start as i64, length as i64),
+            |tensor| tensor.narrow(dim as i64, start as i64, length as i64),
+        )
+    }
+    fn upsample_linear1d<const D: usize, const D2: usize>(
+        tensor: TchTensor<E, D>,
+        output_size: &[usize],
+        align_corners: bool,
+        scales: impl Into<Option<f64>>,
+    ) -> TchTensor<E, D2> {
+        let out_i64 = output_size.iter().map(|x| *x as i64).collect::<Vec<_>>();
+        let scales = scales.into();
+        tensor.unary_ops(
+            |tensor| tensor.upsample_linear1d(&out_i64, align_corners, scales),
+            |tensor| tensor.upsample_linear1d(&out_i64, align_corners, scales),
+        )
+    }
+    fn pad<const D: usize>(
+        tensor: TchTensor<E, D>,
+        pad: &[usize],
+        mode: &str,
+        value: impl Into<Option<f64>>,
+    ) -> TchTensor<E, D> {
+        let pad = pad.iter().map(|x| *x as i64).collect::<Vec<_>>();
+        let value = value.into();
+        tensor.unary_ops(
+            |tensor| tensor.pad(&pad, mode, value),
+            |tensor| tensor.pad(&pad, mode, value),
+        )
+    }
+    fn expand<const D: usize>(
+        tensor: TchTensor<E, D>,
+        size: Vec<usize>,
+        implicit: bool,
+    ) -> TchTensor<E, D> {
+        let size = size
+            .iter()
+            .map(|x| match x {
+                &usize::MAX => -1_i64,
+                _ => *x as i64,
+            })
+            .collect::<Vec<_>>();
+        tensor.unary_ops(
+            |tensor| tensor.expand(&size, implicit),
+            |tensor| tensor.expand(&size, implicit),
+        )
+    }
+    fn upsample_bilinear2d<const D: usize, const D2: usize>(
+        tensor: TchTensor<E, D>,
+        output_size: Vec<usize>,
+        align_corners: bool,
+        scales_h: impl Into<Option<f64>>,
+        scales_w: impl Into<Option<f64>>,
+    ) -> TchTensor<E, D2> {
+        let output_size = output_size.iter().map(|x| *x as i64).collect::<Vec<_>>();
+        let scales_h = scales_h.into();
+        let scales_w = scales_w.into();
+        tensor.unary_ops(
+            |tensor| tensor.upsample_bilinear2d(&output_size, align_corners, scales_h, scales_w),
+            |tensor| tensor.upsample_bilinear2d(&output_size, align_corners, scales_h, scales_w),
+        )
+    }
+    fn select<const D: usize, const D2: usize>(
+        tensor: TchTensor<E, D>,
+        dim: i64,
+        index: i64,
+    ) -> TchTensor<E, D2> {
+        tensor.unary_ops(
+            |tensor| tensor.select(dim as i64, index as i64),
+            |tensor| tensor.select(dim as i64, index as i64),
+        )
+    }
+    fn flip<const D: usize>(tensor: TchTensor<E, D>, dims: Vec<usize>) -> TchTensor<E, D> {
+        let dims = dims.iter().map(|x| *x as i64).collect::<Vec<_>>();
+        tensor.unary_ops(|tensor| tensor.flip(&dims), |tensor| tensor.flip(&dims))
+    }
+    fn permute<const D: usize>(
+        tensor: <TchBackend<E> as Backend>::TensorPrimitive<D>,
+        dims: [usize; D],
+    ) -> <TchBackend<E> as Backend>::TensorPrimitive<D> {
+        let dims = dims.iter().map(|x| *x as i64).collect::<Vec<_>>();
+        tensor.unary_ops(
+            |tensor| tensor.permute(&dims),
+            |tensor| tensor.permute(&dims),
+        )
+    }
+    fn einsum<const D: usize, const D2: usize, const D3: usize>(
+        equation: &str,
+        tensor1: <TchBackend<E> as Backend>::TensorPrimitive<D>,
+        tensor2: <TchBackend<E> as Backend>::TensorPrimitive<D2>,
+    ) -> <TchBackend<E> as Backend>::TensorPrimitive<D3> {
+        let res = tch::Tensor::einsum(equation, &[tensor1.tensor, tensor2.tensor], None);
+        TchTensor::new(res)
+    }
+    fn index_tch<const D: usize, const D2: usize>(
+        tensor: <TchBackend<E> as Backend>::TensorPrimitive<D>,
+        indices: Vec<<TchBackend<E> as Backend>::IntTensorPrimitive<D>>,
+    ) -> <TchBackend<E> as Backend>::TensorPrimitive<D2> {
+        let indices: Vec<_> = indices.iter().map(|x| Some(x.tensor.copy())).collect();
+        tensor.unary_ops(
+            |tensor| tensor.index(&indices),
+            |tensor| tensor.index(&indices),
+        )
+    }
+    fn repeat_interleave_self_int<const D: usize, const D2: usize>(
+        tensor: <TchBackend<E> as Backend>::TensorPrimitive<D>,
+        repeats: usize,
+        dim: Option<usize>,
+        output_size: Option<usize>,
+    ) -> <TchBackend<E> as Backend>::TensorPrimitive<D2> {
+        let dim = match dim {
+            Some(x) => Some(x as i64),
+            None => None,
+        };
+        let output_size = output_size.map(|x| x as i64);
+        tensor.unary_ops(
+            |tensor| tensor.repeat_interleave_self_int(repeats as i64, dim, output_size),
+            |tensor| tensor.repeat_interleave_self_int(repeats as i64, dim, output_size),
+        )
+    }
+    fn where_self<const D: usize>(
+        tensor: <TchBackend<E> as Backend>::TensorPrimitive<D>,
+        condition: <TchBackend<E> as Backend>::BoolTensorPrimitive<D>,
+        other: <TchBackend<E> as Backend>::TensorPrimitive<D>,
+    ) -> <TchBackend<E> as Backend>::TensorPrimitive<D> {
+        tensor.unary_ops(
+            |tensor| tensor.where_self(&condition.tensor, &other.tensor),
+            |tensor| tensor.where_self(&condition.tensor, &other.tensor),
+        )
+    }
+    fn copy_<const D:usize>(tensor: &mut <TchBackend<E> as Backend>::TensorPrimitive<D>, src: <TchBackend<E> as Backend>::TensorPrimitive<D>) {
+        tensor.tensor.copy_(&src.tensor);
+    }
 }
