@@ -13,22 +13,7 @@ version = "0.6.0"
 
 [features]
 default = ["std"]
-std = [
-  "burn-autodiff",
-  "burn-common/std",
-  "burn-dataset",
-  "burn-tensor/std",
-  "burn-ndarray/std",
-  "flate2",
-  "log",
-  "rand/std",
-  "rmp-serde",
-  "serde/std",
-  "serde_json/std",
-  "bincode/std",
-  "half/std",
-  "half/serde", # TODO: set default when https://github.com/starkat99/half-rs/issues/84 is fixed
-]
+std = ["burn-autodiff", "burn-common/std", "burn-dataset", "burn-tensor/std", "burn-ndarray/std", "flate2", "log", "rand/std", "rmp-serde", "serde/std", "serde_json/std", "bincode/std", "half/std", "half/serde"]
 
 # Serialization formats
 test-tch = [] # To use tch during testing, default uses ndarray.
@@ -63,6 +48,7 @@ serde_json = {workspace = true, features = ["alloc"]}#Default enables std
 rmp-serde = {workspace = true, optional = true}
 bincode = {workspace = true}
 half = {workspace = true}
+simd-json = "0.9.2"
 
 [dev-dependencies]
 burn-dataset = {path = "../burn-dataset", version = "0.6.0", features = [
