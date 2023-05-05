@@ -52,6 +52,9 @@ pub struct NoStdInferenceRecordSettings;
 #[derive(Debug, Default)]
 pub struct DebugRecordSettings;
 
+#[derive(Debug, Default)]
+pub struct DebugRecordSettingsSIMD;
+
 #[cfg(feature = "std")]
 impl RecordSettings for DefaultRecordSettings {
     type FloatElem = f32;
@@ -91,4 +94,11 @@ impl RecordSettings for DebugRecordSettings {
     type FloatElem = f32;
     type IntElem = i32;
     type Recorder = crate::record::FilePrettyJsonRecorder;
+}
+
+#[cfg(feature = "std")]
+impl RecordSettings for DebugRecordSettingsSIMD {
+    type FloatElem = f32;
+    type IntElem = i32;
+    type Recorder = crate::record::FilePrettyJsonRecorderSIMD;
 }
