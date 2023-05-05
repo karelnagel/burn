@@ -50,7 +50,7 @@ pub trait Config: serde::Serialize + serde::de::DeserializeOwned {
 }
 
 pub fn config_to_json<C: Config>(config: &C) -> String {
-    serde_json::to_string_pretty(config).unwrap()
+    simd_json::to_string_pretty(config).unwrap()
 }
 
 fn config_from_str<C: Config>(content: &str) -> Result<C, ConfigError> {

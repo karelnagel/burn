@@ -156,7 +156,7 @@ impl Recorder for FileJsonGzRecorder {
     ) -> Result<(), RecorderError> {
         let writer = str2writer!(file, Self::file_extension())?;
         let writer = GzEncoder::new(writer, Compression::default());
-        serde_json::to_writer(writer, &obj)
+        simd_json::to_writer(writer, &obj)
             .map_err(|err| RecorderError::Unknown(err.to_string()))?;
 
         Ok(())
@@ -165,7 +165,7 @@ impl Recorder for FileJsonGzRecorder {
     fn load<Obj: Serialize + DeserializeOwned>(mut file: PathBuf) -> Result<Obj, RecorderError> {
         let reader = str2reader!(file, Self::file_extension())?;
         let reader = GzDecoder::new(reader);
-        let state = serde_json::from_reader(reader)
+        let state = simd_json::from_reader(reader)
             .map_err(|err| RecorderError::Unknown(err.to_string()))?;
 
         Ok(state)
@@ -182,14 +182,14 @@ impl Recorder for FilePrettyJsonRecorder {
         mut file: PathBuf,
     ) -> Result<(), RecorderError> {
         let writer = str2writer!(file, Self::file_extension())?;
-        serde_json::to_writer_pretty(writer, &obj)
+        simd_json::to_writer_pretty(writer, &obj)
             .map_err(|err| RecorderError::Unknown(err.to_string()))?;
         Ok(())
     }
 
     fn load<Obj: Serialize + DeserializeOwned>(mut file: PathBuf) -> Result<Obj, RecorderError> {
         let reader = str2reader!(file, Self::file_extension())?;
-        let state = serde_json::from_reader(reader)
+        let state = simd_json::from_reader(reader)
             .map_err(|err| RecorderError::Unknown(err.to_string()))?;
 
         Ok(state)
