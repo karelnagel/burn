@@ -1,3 +1,4 @@
+use crate::grad_clipping::GradientClippingConfig;
 use crate::module::ADModule;
 use crate::{self as burn, LearningRate};
 
@@ -14,14 +15,16 @@ use burn_tensor::backend::{ADBackend, Backend};
 #[derive(Config)]
 pub struct SgdConfig {
     /// [Weight decay](WeightDecayConfig) config.
-    pub weight_decay: Option<WeightDecayConfig>,
+    weight_decay: Option<WeightDecayConfig>,
     /// [Momentum](MomentumConfig) config.
-    pub momentum: Option<MomentumConfig>,
+    momentum: Option<MomentumConfig>,
+    /// [Gradient Clipping](GradientClippingConfig) config.
+    gradient_clipping: Option<GradientClippingConfig>,
 }
 
 /// Optimizer that implements stochastic gradient descent with momentum.
 ///
-/// Momentum is optinal and can be [configured](SgdConfig::momentum).
+/// Momentum is optional and can be [configured](SgdConfig::momentum).
 pub struct Sgd<B: Backend> {
     momentum: Option<Momentum<B>>,
     weight_decay: Option<WeightDecay<B>>,
@@ -40,11 +43,14 @@ impl SgdConfig {
         let momentum = self.momentum.as_ref().map(Momentum::new);
         let weight_decay = self.weight_decay.as_ref().map(WeightDecay::new);
 
-        Sgd {
+        let mut optim = OptimizerAdaptor::from(Sgd {
             momentum,
             weight_decay,
+        });
+        if let Some(config) = &self.gradient_clipping {
+            optim = optim.with_grad_clipping(config.init());
         }
-        .into()
+        optim
     }
 }
 
@@ -95,6 +101,7 @@ impl<B: Backend> SimpleOptimizer<B> for Sgd<B> {
 mod tests {
     use super::*;
     use crate::{
+        grad_clipping::GradientClipping,
         nn::{Linear, LinearConfig},
         optim::{GradientsParams, Optimizer},
         tensor::{Distribution, Shape},
@@ -122,6 +129,12 @@ mod tests {
         let optim = sgd_with_all();
         let record = optim.to_record();
         assert!(record.is_empty());
+    }
+
+    #[test]
+    fn can_attach_gradient_clipping() {
+        let optim = sgd_with_all().with_grad_clipping(GradientClipping::Value(0.5));
+        assert!(optim.has_gradient_clipping());
     }
 
     #[test]
@@ -159,6 +172,7 @@ mod tests {
                 dampening: 0.1,
                 nesterov: true,
             }),
+            gradient_clipping: None,
         }
         .init()
     }
