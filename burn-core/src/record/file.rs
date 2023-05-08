@@ -37,6 +37,10 @@ pub struct JsonGzFileRecorder<S: PrecisionSettings> {
 pub struct PrettyJsonFileRecorder<S: PrecisionSettings> {
     _settings: PhantomData<S>,
 }
+#[derive(new, Debug, Default, Clone)]
+pub struct PrettyJsonFileRecorderSIMD<S: PrecisionSettings> {
+    _settings: PhantomData<S>,
+}
 
 #[derive(Debug, Default)]
 pub struct FilePrettyJsonRecorderSIMD;
@@ -67,7 +71,7 @@ impl<S: PrecisionSettings> FileRecorder for PrettyJsonFileRecorder<S> {
         "json"
     }
 }
-impl FileRecorder for FilePrettyJsonRecorderSIMD {
+impl<S: PrecisionSettings> FileRecorder for PrettyJsonFileRecorderSIMD<S> {
     fn file_extension() -> &'static str {
         "json"
     }
@@ -223,23 +227,26 @@ impl<S: PrecisionSettings> Recorder for PrettyJsonFileRecorder<S> {
         Ok(state)
     }
 }
-impl Recorder for FilePrettyJsonRecorderSIMD {
+
+impl<S: PrecisionSettings> Recorder for PrettyJsonFileRecorderSIMD<S> {
+    type Settings = S;
     type RecordArgs = PathBuf;
     type RecordOutput = ();
     type LoadArgs = PathBuf;
 
-    fn record<Obj: Serialize + DeserializeOwned>(
-        obj: Obj,
-        mut file: PathBuf,
+    fn save_item<I: Serialize>(
+        &self,
+        item: I,
+        mut file: Self::RecordArgs,
     ) -> Result<(), RecorderError> {
-        let writer = str2writer!(file, Self::file_extension())?;
-        simd_json::to_writer_pretty(writer, &obj)
+        let writer = str2writer!(file)?;
+        simd_json::to_writer_pretty(writer, &item)
             .map_err(|err| RecorderError::Unknown(err.to_string()))?;
         Ok(())
     }
 
-    fn load<Obj: Serialize + DeserializeOwned>(mut file: PathBuf) -> Result<Obj, RecorderError> {
-        let reader = str2reader!(file, Self::file_extension())?;
+    fn load_item<I: DeserializeOwned>(&self, mut file: Self::LoadArgs) -> Result<I, RecorderError> {
+        let reader = str2reader!(file)?;
         let state = simd_json::from_reader(reader)
             .map_err(|err| RecorderError::Unknown(err.to_string()))?;
 
