@@ -1,4 +1,7 @@
-use crate::{self as burn, module::ADModule, record::Record, LearningRate};
+use crate::{
+    self as burn, grad_clipping::GradientClippingConfig, module::ADModule, record::Record,
+    LearningRate,
+};
 
 use super::{
     decay::{WeightDecay, WeightDecayConfig, WeightDecayState},
@@ -21,7 +24,9 @@ pub struct AdamConfig {
     #[config(default = 1e-5)]
     epsilon: f32,
     /// [Weight decay](WeightDecayConfig) config.
-    pub weight_decay: Option<WeightDecayConfig>,
+    weight_decay: Option<WeightDecayConfig>,
+    /// [Gradient Clipping](GradientClippingConfig) config.
+    grad_clipping: Option<GradientClippingConfig>,
 }
 
 /// Adam optimizer as described in the paper [Adam: A Method for Stochastic Optimization](https://arxiv.org/pdf/1412.6980.pdf).
@@ -88,7 +93,12 @@ impl AdamConfig {
             },
             weight_decay: self.weight_decay.as_ref().map(WeightDecay::new),
         };
-        OptimizerAdaptor::from(optim)
+
+        let mut optim = OptimizerAdaptor::from(optim);
+        if let Some(config) = &self.grad_clipping {
+            optim = optim.with_grad_clipping(config.init());
+        }
+        optim
     }
 }
 
@@ -166,7 +176,7 @@ mod tests {
     use super::*;
     use crate::module::{Module, Param};
     use crate::optim::{GradientsParams, Optimizer};
-    use crate::record::DebugRecordSettings;
+    use crate::record::{BinFileRecorder, FullPrecisionSettings, Recorder};
     use crate::tensor::{Data, Distribution, Tensor};
     use crate::{nn, TestADBackend, TestBackend};
 
@@ -180,9 +190,8 @@ mod tests {
         let grads = linear.forward(x).backward();
         let grads = GradientsParams::from_grads(grads, &linear);
         let _linear = optimizer.step(LEARNING_RATE, linear, grads);
-        optimizer
-            .to_record()
-            .record::<DebugRecordSettings>("/tmp/test_optim".into())
+        BinFileRecorder::<FullPrecisionSettings>::default()
+            .record(optimizer.to_record(), "/tmp/test_optim".into())
             .unwrap();
 
         let state_optim_before = optimizer.to_record();
