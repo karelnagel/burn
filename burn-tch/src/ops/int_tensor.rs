@@ -16,13 +16,15 @@ impl<E: TchElement> IntTensorOps<TchBackend<E>> for TchBackend<E> {
     }
 
     fn int_to_data<const D: usize>(tensor: &TchTensor<i64, D>) -> Data<i64, D> {
-        let values: Vec<i64> = tensor.tensor.shallow_clone().into();
-        Data::new(values, tensor.shape())
+        let shape = Self::int_shape(tensor);
+        let tensor = Self::int_reshape(tensor.clone(), Shape::new([shape.num_elements()]));
+        let values: Result<Vec<i64>, tch::TchError> = tensor.tensor.shallow_clone().try_into();
+
+        Data::new(values.unwrap(), shape)
     }
 
     fn int_into_data<const D: usize>(tensor: TchTensor<i64, D>) -> Data<i64, D> {
-        let shape = tensor.shape();
-        Data::new(tensor.tensor.into(), shape)
+        Self::int_to_data(&tensor)
     }
 
     fn int_to_device<const D: usize>(
@@ -48,7 +50,7 @@ impl<E: TchElement> IntTensorOps<TchBackend<E>> for TchBackend<E> {
         device: &<TchBackend<E> as Backend>::Device,
     ) -> TchTensor<i64, D> {
         let tensor = tch::Tensor::empty(
-            &shape.dims.map(|a| a as i64),
+            shape.dims.map(|a| a as i64),
             (tch::Kind::Int64, (*device).into()),
         );
 
@@ -201,7 +203,7 @@ impl<E: TchElement> IntTensorOps<TchBackend<E>> for TchBackend<E> {
         let shape = TchShape::from(shape);
         let device: tch::Device = (*device).into();
 
-        TchTensor::new(tch::Tensor::zeros(&shape.dims, (tch::Kind::Int64, device)))
+        TchTensor::new(tch::Tensor::zeros(shape.dims, (tch::Kind::Int64, device)))
     }
 
     fn int_ones<const D: usize>(
@@ -211,7 +213,7 @@ impl<E: TchElement> IntTensorOps<TchBackend<E>> for TchBackend<E> {
         let shape = TchShape::from(shape);
         let device: tch::Device = (*device).into();
 
-        TchTensor::new(tch::Tensor::ones(&shape.dims, (tch::Kind::Int64, device)))
+        TchTensor::new(tch::Tensor::ones(shape.dims, (tch::Kind::Int64, device)))
     }
 
     fn int_sum<const D: usize>(tensor: TchTensor<i64, D>) -> TchTensor<i64, 1> {
@@ -284,6 +286,35 @@ impl<E: TchElement> IntTensorOps<TchBackend<E>> for TchBackend<E> {
             |mut tensor| tensor.f_masked_fill_(&mask.tensor, value).unwrap(),
             |tensor| tensor.f_masked_fill(&mask.tensor, value).unwrap(),
         )
+    }
+    fn int_argmax<const D: usize>(tensor: TchTensor<i64, D>, dim: usize) -> TchTensor<i64, D> {
+        TchOps::argmax(tensor, dim)
+    }
+
+    fn int_argmin<const D: usize>(tensor: TchTensor<i64, D>, dim: usize) -> TchTensor<i64, D> {
+        TchOps::argmin(tensor, dim)
+    }
+
+    fn int_max_dim<const D: usize>(tensor: TchTensor<i64, D>, dim: usize) -> TchTensor<i64, D> {
+        TchOps::max_dim(tensor, dim)
+    }
+
+    fn int_max_dim_with_indexes<const D: usize>(
+        tensor: TchTensor<i64, D>,
+        dim: usize,
+    ) -> (TchTensor<i64, D>, TchTensor<i64, D>) {
+        TchOps::max_dim_with_indexes(tensor, dim)
+    }
+
+    fn int_min_dim<const D: usize>(tensor: TchTensor<i64, D>, dim: usize) -> TchTensor<i64, D> {
+        TchOps::min_dim(tensor, dim)
+    }
+
+    fn int_min_dim_with_indexes<const D: usize>(
+        tensor: TchTensor<i64, D>,
+        dim: usize,
+    ) -> (TchTensor<i64, D>, TchTensor<i64, D>) {
+        TchOps::min_dim_with_indexes(tensor, dim)
     }
     fn int_permute<const D: usize>(
         tensor: <TchBackend<E> as Backend>::IntTensorPrimitive<D>,

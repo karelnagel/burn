@@ -228,44 +228,6 @@ where
         Self::new(B::from_full_precision(tensor.primitive))
     }
 
-    /// Applies the argmax function along the given dimension and returns an integer tensor.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use burn_tensor::backend::Backend;
-    /// use burn_tensor::{Tensor, Shape};
-    ///
-    /// fn example<B: Backend>() {
-    ///     let tensor = Tensor::<B, 3>::ones(Shape::new([2, 3, 3]));
-    ///     let tensor = tensor.argmax(1);
-    ///     println!("{:?}", tensor.shape());
-    ///     // Shape { dims: [2, 1, 3] }
-    /// }
-    /// ```
-    pub fn argmax(self, dim: usize) -> Tensor<B, D, Int> {
-        Tensor::new(B::argmax(self.primitive, dim))
-    }
-
-    /// Applies the argmin function along the given dimension and returns an integer tensor.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use burn_tensor::backend::Backend;
-    /// use burn_tensor::{Tensor, Shape};
-    ///
-    /// fn example<B: Backend>() {
-    ///     let tensor = Tensor::<B, 3>::ones(Shape::new([2, 3, 3]));
-    ///     let tensor = tensor.argmin(1);
-    ///     println!("{:?}", tensor.shape());
-    ///     // Shape { dims: [2, 1, 3] }
-    /// }
-    /// ```
-    pub fn argmin(self, dim: usize) -> Tensor<B, D, Int> {
-        Tensor::new(B::argmin(self.primitive, dim))
-    }
-
     /// Detach the current tensor from the autodiff graph.
     /// This function does nothing when autodiff is not enabled.
     /// This can be used in batchers or elsewere to ensure that previous operations are not

@@ -311,6 +311,19 @@ impl<E: FloatNdArrayElement> IntTensorOps<NdArrayBackend<E>> for NdArrayBackend<
     ) -> NdArrayTensor<i64, D1> {
         NdArrayMathOps::index_select_dim_assign(tensor, dim, indexes, value)
     }
+    fn int_argmax<const D: usize>(
+        tensor: NdArrayTensor<i64, D>,
+        dim: usize,
+    ) -> NdArrayTensor<i64, D> {
+        NdArrayMathOps::argmax(tensor, dim)
+    }
+
+    fn int_argmin<const D: usize>(
+        tensor: NdArrayTensor<i64, D>,
+        dim: usize,
+    ) -> NdArrayTensor<i64, D> {
+        NdArrayMathOps::argmin(tensor, dim)
+    }
     fn int_permute<const D: usize>(
         tensor: <NdArrayBackend<E> as Backend>::IntTensorPrimitive<D>,
         dims: [usize; D],

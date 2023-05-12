@@ -52,14 +52,14 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
         let shape = TchShape::from(shape);
         let device: tch::Device = (*device).into();
 
-        TchTensor::new(tch::Tensor::zeros(&shape.dims, (E::KIND, device)))
+        TchTensor::new(tch::Tensor::zeros(shape.dims, (E::KIND, device)))
     }
 
     fn ones<const D: usize>(shape: Shape<D>, device: &TchDevice) -> TchTensor<E, D> {
         let shape = TchShape::from(shape);
         let device: tch::Device = (*device).into();
 
-        TchTensor::new(tch::Tensor::ones(&shape.dims, (E::KIND, device)))
+        TchTensor::new(tch::Tensor::ones(shape.dims, (E::KIND, device)))
     }
 
     fn shape<const D: usize>(tensor: &<TchBackend<E> as Backend>::TensorPrimitive<D>) -> Shape<D> {
@@ -69,15 +69,17 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
     fn to_data<const D: usize>(
         tensor: &<TchBackend<E> as Backend>::TensorPrimitive<D>,
     ) -> Data<<TchBackend<E> as Backend>::FloatElem, D> {
-        let values: Vec<E> = tensor.tensor.shallow_clone().into();
-        Data::new(values, tensor.shape())
+        let shape = Self::shape(tensor);
+        let tensor = Self::reshape(tensor.clone(), Shape::new([shape.num_elements()]));
+        let values: Result<Vec<E>, tch::TchError> = tensor.tensor.shallow_clone().try_into();
+
+        Data::new(values.unwrap(), shape)
     }
 
     fn into_data<const D: usize>(
         tensor: <TchBackend<E> as Backend>::TensorPrimitive<D>,
     ) -> Data<<TchBackend<E> as Backend>::FloatElem, D> {
-        let shape = tensor.shape();
-        Data::new(tensor.tensor.into(), shape)
+        Self::to_data(&tensor)
     }
 
     fn device<const D: usize>(tensor: &TchTensor<E, D>) -> TchDevice {
@@ -92,7 +94,7 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
         shape: Shape<D>,
         device: &<TchBackend<E> as Backend>::Device,
     ) -> <TchBackend<E> as Backend>::TensorPrimitive<D> {
-        let tensor = tch::Tensor::empty(&shape.dims.map(|a| a as i64), (E::KIND, (*device).into()));
+        let tensor = tch::Tensor::empty(shape.dims.map(|a| a as i64), (E::KIND, (*device).into()));
 
         TchTensor::new(tensor)
     }
@@ -325,17 +327,33 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
     }
 
     fn argmax<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<i64, D> {
-        let storage = tensor.storage.clone();
-        let tensor = tensor.tensor.argmax(dim as i64, true);
-
-        TchTensor::from_existing(tensor, storage)
+        TchOps::argmax(tensor, dim)
     }
 
     fn argmin<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<i64, D> {
-        let storage = tensor.storage.clone();
-        let tensor = tensor.tensor.argmin(dim as i64, true);
+        TchOps::argmin(tensor, dim)
+    }
 
-        TchTensor::from_existing(tensor, storage)
+    fn max_dim<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<E, D> {
+        TchOps::max_dim(tensor, dim)
+    }
+
+    fn max_dim_with_indexes<const D: usize>(
+        tensor: TchTensor<E, D>,
+        dim: usize,
+    ) -> (TchTensor<E, D>, TchTensor<i64, D>) {
+        TchOps::max_dim_with_indexes(tensor, dim)
+    }
+
+    fn min_dim<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<E, D> {
+        TchOps::min_dim(tensor, dim)
+    }
+
+    fn min_dim_with_indexes<const D: usize>(
+        tensor: TchTensor<E, D>,
+        dim: usize,
+    ) -> (TchTensor<E, D>, TchTensor<i64, D>) {
+        TchOps::min_dim_with_indexes(tensor, dim)
     }
 
     fn exp<const D: usize>(tensor: TchTensor<E, D>) -> TchTensor<E, D> {
@@ -379,10 +397,6 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
 
     fn cat<const D: usize>(tensors: Vec<TchTensor<E, D>>, dim: usize) -> TchTensor<E, D> {
         TchOps::cat(tensors, dim)
-    }
-
-    fn relu<const D: usize>(tensor: TchTensor<E, D>) -> TchTensor<E, D> {
-        tensor.unary_ops(|mut tensor| tensor.relu_(), |tensor| tensor.relu())
     }
     fn unbind<const D: usize, const D2: usize>(
         tensor: TchTensor<E, D>,
@@ -500,7 +514,11 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
         tensor1: <TchBackend<E> as Backend>::TensorPrimitive<D>,
         tensor2: <TchBackend<E> as Backend>::TensorPrimitive<D2>,
     ) -> <TchBackend<E> as Backend>::TensorPrimitive<D3> {
-        let res = tch::Tensor::einsum(equation, &[tensor1.tensor, tensor2.tensor], None);
+        let res = tch::Tensor::einsum(
+            equation,
+            &[tensor1.tensor, tensor2.tensor],
+            None::<Vec<i64>>,
+        );
         TchTensor::new(res)
     }
     fn index_tch<const D: usize, const D2: usize>(
@@ -539,7 +557,10 @@ impl<E: TchElement> TensorOps<TchBackend<E>> for TchBackend<E> {
             |tensor| tensor.where_self(&condition.tensor, &other.tensor),
         )
     }
-    fn copy_<const D:usize>(tensor: &mut <TchBackend<E> as Backend>::TensorPrimitive<D>, src: <TchBackend<E> as Backend>::TensorPrimitive<D>) {
+    fn copy_<const D: usize>(
+        tensor: &mut <TchBackend<E> as Backend>::TensorPrimitive<D>,
+        src: <TchBackend<E> as Backend>::TensorPrimitive<D>,
+    ) {
         tensor.tensor.copy_(&src.tensor);
     }
 }

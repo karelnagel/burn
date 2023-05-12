@@ -330,11 +330,11 @@ impl<E: FloatNdArrayElement> TensorOps<NdArrayBackend<E>> for NdArrayBackend<E> 
     }
 
     fn argmax<const D: usize>(tensor: NdArrayTensor<E, D>, dim: usize) -> NdArrayTensor<i64, D> {
-        arg(tensor, dim, cmp_min)
+        NdArrayMathOps::argmax(tensor, dim)
     }
 
     fn argmin<const D: usize>(tensor: NdArrayTensor<E, D>, dim: usize) -> NdArrayTensor<i64, D> {
-        arg(tensor, dim, cmp_max)
+        NdArrayMathOps::argmin(tensor, dim)
     }
 
     fn exp<const D: usize>(tensor: NdArrayTensor<E, D>) -> NdArrayTensor<E, D> {
@@ -419,18 +419,6 @@ impl<E: FloatNdArrayElement> TensorOps<NdArrayBackend<E>> for NdArrayBackend<E> 
         NdArrayOps::cat(tensors, dim)
     }
 
-    fn relu<const D: usize>(tensor: NdArrayTensor<E, D>) -> NdArrayTensor<E, D> {
-        let zero = 0.elem();
-        let array = tensor
-            .array
-            .mapv_into(|elem| match elem < zero {
-                true => 0.0.elem(),
-                false => elem,
-            })
-            .into_shared();
-
-        NdArrayTensor::new(array)
-    }
     fn unbind<const D: usize, const D2: usize>(
         tensor: NdArrayTensor<E, D>,
         dim: usize,

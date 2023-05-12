@@ -12,6 +12,7 @@ mod cross_entropy;
 mod div;
 mod erf;
 mod exp;
+mod gelu;
 mod index;
 mod index_select;
 mod index_select_dim;
@@ -19,6 +20,7 @@ mod log;
 mod log1p;
 mod mask;
 mod matmul;
+mod maxmin;
 mod maxpool2d;
 mod mul;
 mod multithread;
@@ -42,6 +44,10 @@ macro_rules! testgen_all {
         // Behavior
         burn_autodiff::testgen_ad_broadcast!();
 
+        // Activation
+        burn_autodiff::testgen_ad_relu!();
+        burn_autodiff::testgen_ad_gelu!();
+
         // Modules
         burn_autodiff::testgen_ad_conv1d!();
         burn_autodiff::testgen_ad_conv2d!();
@@ -54,6 +60,7 @@ macro_rules! testgen_all {
         burn_autodiff::testgen_ad_multithread!();
         burn_autodiff::testgen_ad_add!();
         burn_autodiff::testgen_ad_aggregation!();
+        burn_autodiff::testgen_ad_maxmin!();
         burn_autodiff::testgen_ad_cat!();
         burn_autodiff::testgen_ad_cos!();
         burn_autodiff::testgen_ad_cross_entropy_loss!();
@@ -70,7 +77,6 @@ macro_rules! testgen_all {
         burn_autodiff::testgen_ad_mul!();
         burn_autodiff::testgen_ad_neg!();
         burn_autodiff::testgen_ad_powf!();
-        burn_autodiff::testgen_ad_relu!();
         burn_autodiff::testgen_ad_reshape!();
         burn_autodiff::testgen_ad_sin!();
         burn_autodiff::testgen_ad_softmax!();

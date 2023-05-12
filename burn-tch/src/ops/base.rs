@@ -15,7 +15,7 @@ impl<E: tch::kind::Element + Copy + Default> TchOps<E> {
     ) -> TchTensor<E, D2> {
         let shape_tch: TchShape<D2> = shape.into();
 
-        TchTensor::from_existing(tensor.tensor.reshape(&shape_tch.dims), tensor.storage)
+        TchTensor::from_existing(tensor.tensor.reshape(shape_tch.dims), tensor.storage)
     }
 
     pub fn index<const D1: usize, const D2: usize>(
@@ -42,7 +42,7 @@ impl<E: tch::kind::Element + Copy + Default> TchOps<E> {
         let tensor_original = tensor.tensor.copy();
         let tch_shape = TchShape::from(tensor.shape());
 
-        let mut tensor = tensor_original.view_(&tch_shape.dims);
+        let mut tensor = tensor_original.view_(tch_shape.dims);
 
         for (i, index) in indexes.into_iter().enumerate().take(D2) {
             let start = index.start as i64;
@@ -323,5 +323,59 @@ impl<E: tch::kind::Element + Copy + Default> TchOps<E> {
                 .sum_dim_intlist(Some([dim as i64].as_slice()), true, E::KIND),
             tensor.storage,
         )
+    }
+
+    pub fn argmax<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<i64, D> {
+        let storage = tensor.storage.clone();
+        let tensor = tensor.tensor.argmax(dim as i64, true);
+
+        TchTensor::from_existing(tensor, storage)
+    }
+
+    pub fn argmin<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<i64, D> {
+        let storage = tensor.storage.clone();
+        let tensor = tensor.tensor.argmin(dim as i64, true);
+
+        TchTensor::from_existing(tensor, storage)
+    }
+
+    pub fn max_dim<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<E, D> {
+        let storage = tensor.storage.clone();
+        let (tensor, _indexes) = tensor.tensor.max_dim(dim as i64, true);
+
+        TchTensor::from_existing(tensor, storage)
+    }
+
+    pub fn max_dim_with_indexes<const D: usize>(
+        tensor: TchTensor<E, D>,
+        dim: usize,
+    ) -> (TchTensor<E, D>, TchTensor<i64, D>) {
+        let storage = tensor.storage.clone();
+        let (tensor, indexes) = tensor.tensor.max_dim(dim as i64, true);
+
+        let tensor = TchTensor::from_existing(tensor, storage);
+        let indexes = TchTensor::new(indexes);
+
+        (tensor, indexes)
+    }
+
+    pub fn min_dim<const D: usize>(tensor: TchTensor<E, D>, dim: usize) -> TchTensor<E, D> {
+        let storage = tensor.storage.clone();
+        let (tensor, _indexes) = tensor.tensor.min_dim(dim as i64, true);
+
+        TchTensor::from_existing(tensor, storage)
+    }
+
+    pub fn min_dim_with_indexes<const D: usize>(
+        tensor: TchTensor<E, D>,
+        dim: usize,
+    ) -> (TchTensor<E, D>, TchTensor<i64, D>) {
+        let storage = tensor.storage.clone();
+        let (tensor, indexes) = tensor.tensor.min_dim(dim as i64, true);
+
+        let tensor = TchTensor::from_existing(tensor, storage);
+        let indexes = TchTensor::new(indexes);
+
+        (tensor, indexes)
     }
 }
